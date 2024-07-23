@@ -1,0 +1,49 @@
+apiVersion: kubeflow.org/v2beta1
+kind: MPIJob
+metadata:
+  name: dist-int
+  namespace: runai-sony
+spec:
+  slotsPerWorker: 1
+  runPolicy:
+    cleanPodPolicy: Running
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - name: mpi
+            image: gcr.io/run-ai-demo/quickstart-distributed:v0.3.0
+            command:
+            - sh
+            - -c
+            - >
+              export RUNAI_MPI_NUM_WORKERS=2 &&
+              horovodrun -np ${RUNAI_MPI_NUM_WORKERS} --verbose
+              python scripts/tf_cnn_benchmarks/tf_cnn_benchmarks.py
+              --model=resnet20 --num_batches=1000000 --data_name cifar10
+              --data_dir /cifar10 --batch_size=64 --variable_update=horovod;
+              echo "Horovod run completed, sleeping infinitely";
+              sleep infinity
+            resources:
+              limits:
+                nvidia.com/gpu: 1
+              requests:
+                nvidia.com/gpu: 1
+    Worker:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - name: mpi
+            image: gcr.io/run-ai-demo/quickstart-distributed:v0.3.0
+            command:
+            - sh
+            - -c
+            - "sleep infinity"
+            resources:
+              limits:
+                nvidia.com/gpu: 1
+              requests:
+                nvidia.com/gpu: 1
