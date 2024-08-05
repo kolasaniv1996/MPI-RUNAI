@@ -1,0 +1,53 @@
+apiVersion: kubeflow.org/v2beta1
+kind: MPIJob
+metadata:
+  name: tensorflow-benchmarks
+  namespace: runai-sony
+  labels:
+    project: sony
+spec:
+  slotsPerWorker: 1
+  runPolicy:
+    cleanPodPolicy: Running
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - image: docker.io/vivekkolasani1996/runai-mpi:v3
+            name: tensorflow-benchmarks-cpu
+            command:
+            - mpirun
+            - --allow-run-as-root
+            - -np
+            - "2"
+            - -bind-to
+            - none
+            - -map-by
+            - slot
+            - -x
+            - NCCL_DEBUG=INFO
+            - -x
+            - LD_LIBRARY_PATH
+            - -x
+            - PATH
+            - -mca
+            - pml
+            - ob1
+            - -mca
+            - btl
+            - ^openib
+            - /usr/bin/python3
+            - /scripts/mpi_torch.py
+    Worker:
+      replicas: 2
+      template:
+        spec:
+          containers:
+          - image: docker.io/vivekkolasani1996/runai-mpi:v3
+            name: tensorflow-benchmarks-cpu
+            resources:
+              limits:
+                nvidia.com/gpu: 1
+
